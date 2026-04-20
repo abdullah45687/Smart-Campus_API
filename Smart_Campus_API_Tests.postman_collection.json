@@ -1,0 +1,400 @@
+{
+  "info": {
+    "_postman_id": "b34e2cda-485a-4363-8ec2-14cf1b8dfd18",
+    "name": "Smart Campus API Tests - Comprehensive",
+    "description": "Comprehensive test collection covering all coursework scenarios with status assertions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090/smart-campus-api/api/v1"
+    },
+    {
+      "key": "roomPrimary",
+      "value": "ENG-101"
+    },
+    {
+      "key": "roomSensor",
+      "value": "ENG-101"
+    },
+    {
+      "key": "sensorPrimary",
+      "value": "TEMP-001"
+    },
+    {
+      "key": "sensorMaintenance",
+      "value": "MAINT-001"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Discovery",
+      "item": [
+        {
+          "name": "Discovery Endpoint (Root)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Discovery has resources object', function () { pm.expect(body.resources).to.be.an('object'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Rooms",
+      "item": [
+        {
+          "name": "POST Create a new room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": \"{{roomPrimary}}\",\n    \"name\": \"Library Quiet Study\",\n    \"capacity\": 150\n}"
+            },
+            "url": "{{baseUrl}}/rooms"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 or 409', function () { pm.expect([201, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET List all rooms",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rooms"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Body is array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Fetch specific room metadata",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/rooms/{{roomPrimary}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Room id matches', function () { pm.expect(body.id).to.eql(pm.collectionVariables.get('roomPrimary')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE decommission a room (Success)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/rooms/{{roomPrimary}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204 or 404', function () { pm.expect([204, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Create room for sensor linking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": \"{{roomSensor}}\",\n    \"name\": \"Engineering Wing\",\n    \"capacity\": 50\n}"
+            },
+            "url": "{{baseUrl}}/rooms"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 or 409', function () { pm.expect([201, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE room with active sensors (Fail 409)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/rooms/{{roomSensor}}",
+            "description": "Run this after creating the 'TEMP-001' sensor in the Sensors folder to trigger the 409 Conflict Mapper."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Sensors",
+      "item": [
+        {
+          "name": "POST Register new sensor (Success)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": \"{{sensorPrimary}}\",\n    \"name\": \"Temperature Sensor T1\",\n    \"type\": \"TEMPERATURE\",\n    \"status\": \"ACTIVE\",\n    \"roomId\": \"{{roomSensor}}\"\n}"
+            },
+            "url": "{{baseUrl}}/sensors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 or 409', function () { pm.expect([201, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Link to non-existent room (Fail 422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": \"CO2-001\",\n    \"name\": \"CO2 Sensor\",\n    \"type\": \"CO2\",\n    \"status\": \"ACTIVE\",\n    \"roomId\": \"GHOST-ROOM\"\n}"
+            },
+            "url": "{{baseUrl}}/sensors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', function () { pm.response.to.have.status(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET List all sensors",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sensors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Body is array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Filter sensors by type (e.g. TEMPERATURE)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sensors?type=TEMPERATURE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Register sensor in MAINTENANCE",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": \"{{sensorMaintenance}}\",\n    \"name\": \"Maintenance Monitor\",\n    \"type\": \"TEMPERATURE\",\n    \"status\": \"MAINTENANCE\",\n    \"roomId\": \"{{roomSensor}}\"\n}"
+            },
+            "url": "{{baseUrl}}/sensors"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 or 409', function () { pm.expect([201, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Sensor Readings",
+      "item": [
+        {
+          "name": "POST Append new reading (Success)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"value\": 23.5,\n    \"timestamp\": 1698141600000\n}"
+            },
+            "url": "{{baseUrl}}/sensors/{{sensorPrimary}}/readings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Fetch sensor history",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sensors/{{sensorPrimary}}/readings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Body is array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Append reading to MAINTENANCE sensor (Fail 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"value\": 24.5,\n    \"timestamp\": 1698141650000\n}"
+            },
+            "url": "{{baseUrl}}/sensors/{{sensorMaintenance}}/readings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
